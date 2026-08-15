@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+//global exception handler
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
