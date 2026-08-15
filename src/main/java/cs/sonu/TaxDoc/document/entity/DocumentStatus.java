@@ -4,6 +4,7 @@ public enum DocumentStatus {
 
     UPLOADED,
     CLASSIFYING,
+    CLASSIFIED,
     EXTRACTING,
     IN_REVIEW,
     FINALIZED,

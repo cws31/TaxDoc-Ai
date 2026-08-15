@@ -42,4 +42,10 @@ public class DocumentController {
         return ResponseEntity.ok(
                 documentService.getDocument(id));
     }
+
+    @PostMapping("/{id}/classify")
+    public Document classifyDocument(@PathVariable UUID id) {
+
+        return documentService.classifyDocument(id);
+    }
 }
