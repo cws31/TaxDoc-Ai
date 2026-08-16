@@ -8,5 +8,6 @@ public enum DocumentStatus {
     EXTRACTING,
     IN_REVIEW,
     FINALIZED,
-    ERROR
+    ERROR,
+    EXTRACTED
 }

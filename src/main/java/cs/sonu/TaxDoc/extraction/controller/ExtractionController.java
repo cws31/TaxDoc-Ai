@@ -1,8 +1,9 @@
 package cs.sonu.TaxDoc.extraction.controller;
 
-import cs.sonu.TaxDoc.extraction.dto.ExtractedFieldResponse;
+import cs.sonu.TaxDoc.document.entity.Document;
+import cs.sonu.TaxDoc.document.service.DocumentService;
+import cs.sonu.TaxDoc.extraction.dto.W2ExtractionResult;
 import cs.sonu.TaxDoc.extraction.service.ExtractionService;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -10,27 +11,27 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/documents")
+@RequestMapping("/api/v1/extractions")
 public class ExtractionController {
 
     private final ExtractionService extractionService;
+    private final DocumentService documentService;
 
-    public ExtractionController(ExtractionService extractionService) {
+    public ExtractionController(ExtractionService extractionService, DocumentService documentService) {
         this.extractionService = extractionService;
+        this.documentService = documentService;
     }
 
-    @PostMapping("/{id}/extract")
-    public ResponseEntity<Void> extract(@PathVariable UUID id) {
-
-        extractionService.prepareForExtraction(id);
-
-        extractionService.processExtractionAsync(id);
-
-        return ResponseEntity.accepted().build();
+    @PostMapping("/w2/{documentId}")
+    public ResponseEntity<W2ExtractionResult> extractSingleW2(@PathVariable UUID documentId) {
+        Document document = documentService.getDocument(documentId);
+        W2ExtractionResult result = extractionService.extractW2Data(document);
+        return ResponseEntity.ok(result);
     }
 
-    @GetMapping("/{id}/fields")
-    public ResponseEntity<List<ExtractedFieldResponse>> getFields(@PathVariable UUID id) {
-        return ResponseEntity.ok(extractionService.getFields(id));
+    @PostMapping("/w2/batch")
+    public ResponseEntity<List<W2ExtractionResult>> extractBatchW2(@RequestBody List<UUID> documentIds) {
+        List<W2ExtractionResult> results = extractionService.extractBatchW2Data(documentIds);
+        return ResponseEntity.ok(results);
     }
 }
