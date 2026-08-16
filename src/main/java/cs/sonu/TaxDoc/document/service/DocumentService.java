@@ -9,6 +9,7 @@ import cs.sonu.TaxDoc.document.storage.FileStorageService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,6 +30,7 @@ public class DocumentService {
         this.classificationService = classificationService;
     }
 
+    // --- Single Upload ---
     public Document uploadDocument(MultipartFile file) {
         validateFile(file);
 
@@ -44,6 +46,33 @@ public class DocumentService {
         return documentRepository.save(document);
     }
 
+    // --- Batch Upload ---
+    public List<Document> uploadBatch(MultipartFile[] files) {
+        if (files == null || files.length == 0) {
+            throw new IllegalArgumentException("Batch upload request cannot be empty");
+        }
+
+        List<Document> documents = new ArrayList<>();
+
+        for (MultipartFile file : files) {
+            validateFile(file);
+
+            UUID documentId = UUID.randomUUID();
+            String storagePath = fileStorageService.store(documentId, file);
+
+            Document document = new Document();
+            document.setId(documentId);
+            document.setOriginalFilename(file.getOriginalFilename());
+            document.setStoragePath(storagePath);
+            document.setStatus(DocumentStatus.UPLOADED);
+
+            documents.add(document);
+        }
+
+        return documentRepository.saveAll(documents);
+    }
+
+    // --- Entity Querying ---
     public List<Document> getAllDocuments() {
         return documentRepository.findAll();
     }
@@ -53,11 +82,17 @@ public class DocumentService {
                 .orElseThrow(() -> new RuntimeException("Document not found: " + id));
     }
 
+    // --- Classification Delegations ---
     public Document classifyDocument(UUID documentId) {
         Document document = getDocument(documentId);
         return classificationService.classify(document);
     }
 
+    public List<Document> classifyBatch(List<UUID> documentIds) {
+        return classificationService.classifyBatch(documentIds);
+    }
+
+    // --- Validation Helper ---
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File cannot be empty");

@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.Path;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 public class AiClassificationService implements ClassificationService {
@@ -73,5 +75,19 @@ public class AiClassificationService implements ClassificationService {
 
         document.setStatus(DocumentStatus.CLASSIFIED);
         return documentRepository.save(document);
+    }
+
+    @Override
+    public List<Document> classifyBatch(List<UUID> documentIds) {
+        if (documentIds == null || documentIds.isEmpty()) {
+            throw new IllegalArgumentException("Document ID list cannot be empty");
+        }
+
+        List<Document> documents = documentRepository.findAllById(documentIds);
+
+        // Concurrency execution isolated inside Classification module
+        return documents.parallelStream()
+                .map(this::classify)
+                .toList();
     }
 }

@@ -22,6 +22,7 @@ public class DocumentController {
         this.documentService = documentService;
     }
 
+    // --- Single Upload Endpoint ---
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<DocumentResponse> uploadDocument(@RequestParam("file") MultipartFile file) {
         Document document = documentService.uploadDocument(file);
@@ -29,6 +30,17 @@ public class DocumentController {
         return ResponseEntity.created(URI.create("/api/v1/documents/" + document.getId())).body(response);
     }
 
+    // --- Batch Upload Endpoint ---
+    @PostMapping(value = "/upload-batch", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<List<DocumentResponse>> uploadBatchDocuments(@RequestParam("files") MultipartFile[] files) {
+        List<DocumentResponse> responses = documentService.uploadBatch(files)
+                .stream()
+                .map(DocumentResponse::from)
+                .toList();
+        return ResponseEntity.ok(responses);
+    }
+
+    // --- Retrieval Endpoints ---
     @GetMapping
     public ResponseEntity<List<DocumentResponse>> getAllDocuments() {
         List<DocumentResponse> responses = documentService.getAllDocuments()
@@ -43,9 +55,20 @@ public class DocumentController {
         return ResponseEntity.ok(DocumentResponse.from(documentService.getDocument(id)));
     }
 
+    // --- Single Classification Endpoint ---
     @PostMapping("/{id}/classify")
     public ResponseEntity<DocumentResponse> classifyDocument(@PathVariable UUID id) {
         Document classified = documentService.classifyDocument(id);
         return ResponseEntity.ok(DocumentResponse.from(classified));
+    }
+
+    // --- Batch Classification Endpoint ---
+    @PostMapping("/classify-batch")
+    public ResponseEntity<List<DocumentResponse>> classifyBatchDocuments(@RequestBody List<UUID> documentIds) {
+        List<DocumentResponse> responses = documentService.classifyBatch(documentIds)
+                .stream()
+                .map(DocumentResponse::from)
+                .toList();
+        return ResponseEntity.ok(responses);
     }
 }
