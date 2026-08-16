@@ -25,21 +25,16 @@ public class W2ExtractionService implements ExtractionService {
     private static final Logger log = LoggerFactory.getLogger(W2ExtractionService.class);
 
     private final ExtractionAiClient extractionAiClient;
-    private final ExtractionValidator extractionValidator;
     private final DocumentRepository documentRepository;
     private final ObjectMapper objectMapper;
-
-    // Updated to use your new plugin-based extensible compliance engine
     private final ExtensibleW2ComplianceEngine extensibleW2ComplianceEngine;
 
     public W2ExtractionService(
             ExtractionAiClient extractionAiClient,
-            ExtractionValidator extractionValidator,
             ExtensibleW2ComplianceEngine extensibleW2ComplianceEngine,
             DocumentRepository documentRepository,
             ObjectMapper objectMapper) {
         this.extractionAiClient = extractionAiClient;
-        this.extractionValidator = extractionValidator;
         this.extensibleW2ComplianceEngine = extensibleW2ComplianceEngine;
         this.documentRepository = documentRepository;
         this.objectMapper = objectMapper;
@@ -75,11 +70,7 @@ public class W2ExtractionService implements ExtractionService {
         }
 
         // Set document status based on scoring recommendation
-        if (complianceReport.assignedStatus() == ExtractedFieldStatus.AUTO_ACCEPTED) {
-            document.setStatus(DocumentStatus.EXTRACTED);
-        } else {
-            document.setStatus(DocumentStatus.EXTRACTED); // Flagged for review via audit trail
-        }
+        document.setStatus(DocumentStatus.EXTRACTED);
 
         documentRepository.save(document);
 
