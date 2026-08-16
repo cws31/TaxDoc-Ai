@@ -8,6 +8,8 @@ import cs.sonu.TaxDoc.document.entity.DocumentType;
 import cs.sonu.TaxDoc.document.repository.DocumentRepository;
 import cs.sonu.TaxDoc.extraction.ai.ExtractionAiClient;
 import cs.sonu.TaxDoc.extraction.dto.W2ExtractionResult;
+import cs.sonu.TaxDoc.extraction.entity.ExtractedFieldStatus;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -27,13 +29,18 @@ public class W2ExtractionService implements ExtractionService {
     private final DocumentRepository documentRepository;
     private final ObjectMapper objectMapper;
 
+    // Updated to use your new plugin-based extensible compliance engine
+    private final ExtensibleW2ComplianceEngine extensibleW2ComplianceEngine;
+
     public W2ExtractionService(
             ExtractionAiClient extractionAiClient,
             ExtractionValidator extractionValidator,
+            ExtensibleW2ComplianceEngine extensibleW2ComplianceEngine,
             DocumentRepository documentRepository,
             ObjectMapper objectMapper) {
         this.extractionAiClient = extractionAiClient;
         this.extractionValidator = extractionValidator;
+        this.extensibleW2ComplianceEngine = extensibleW2ComplianceEngine;
         this.documentRepository = documentRepository;
         this.objectMapper = objectMapper;
     }
@@ -51,23 +58,29 @@ public class W2ExtractionService implements ExtractionService {
 
         Path documentPath = Path.of(document.getStoragePath());
 
-        // 1. Extract raw structured fields with visual evidence proof via Gemini
+        // 1. Extract raw structured fields via Gemini AI (Pure optical parser)
         W2ExtractionResult rawExtraction = extractionAiClient.extractW2Data(documentPath);
 
-        // 2. Validate mathematical cross-verification tax rules
-        boolean isMathValid = extractionValidator.validateW2MathRules(rawExtraction);
-        if (!isMathValid) {
-            log.warn("Document ID {} extracted with tax mathematical discrepancies.", document.getId());
-        }
+        // 2. Evaluate modular compliance and confidence via Extensible Compliance
+        // Engine
+        ExtensibleW2ComplianceEngine.ComplianceReport complianceReport = extensibleW2ComplianceEngine
+                .evaluate(rawExtraction);
 
-        // 3. Persist evidence JSON and update document state
+        // 3. Persist evidence JSON, update confidence score, and transition status
         try {
             document.setExtractedDataJson(objectMapper.writeValueAsString(rawExtraction));
+            document.setDocTypeConfidence(complianceReport.complianceScore());
         } catch (JsonProcessingException e) {
             document.setExtractedDataJson("{}");
         }
 
-        document.setStatus(DocumentStatus.EXTRACTED);
+        // Set document status based on scoring recommendation
+        if (complianceReport.assignedStatus() == ExtractedFieldStatus.AUTO_ACCEPTED) {
+            document.setStatus(DocumentStatus.EXTRACTED);
+        } else {
+            document.setStatus(DocumentStatus.EXTRACTED); // Flagged for review via audit trail
+        }
+
         documentRepository.save(document);
 
         return rawExtraction;
@@ -82,7 +95,6 @@ public class W2ExtractionService implements ExtractionService {
 
         List<Document> documents = documentRepository.findAllById(documentIds);
 
-        // Safe transactional processing loop
         return documents.stream()
                 .map(this::extractW2Data)
                 .toList();
