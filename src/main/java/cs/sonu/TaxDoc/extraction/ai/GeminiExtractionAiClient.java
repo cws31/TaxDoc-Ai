@@ -65,28 +65,29 @@ public class GeminiExtractionAiClient implements ExtractionAiClient {
 
     private String getExtractionPrompt() {
         return """
-                Extract all W-2 tax form fields from the document image/PDF with full visual evidence proof.
-                Return ONLY a raw JSON object strictly matching this schema:
+                You are a strict, factual tax document optical parser.
+                Your job is ONLY to extract text and numbers exactly as they physically appear on the provided W-2 document.
 
+                CRITICAL ANTI-HALLUCINATION RULES:
+                1. DO NOT guess, infer, or hallucinate values. If a box, number, or identifier is missing, blank, or illegible on the document, you MUST set its 'value' and 'rawSnippet' to null, and explain the missing evidence in 'visualEvidenceReasoning'.
+                2. Extract monetary amounts strictly as numbers (e.g., 85000.00). Do not include dollar signs ($) or commas (,).
+                3. Return ONLY a raw JSON object strictly matching the schema below. Do not wrap in markdown or json code fences.
+
+                Schema:
                 {
-                  "employeeSsn": {"value": "XXX-XX-XXXX", "rawSnippet": "...", "detectedBoxLabel": "Box a", "fieldConfidence": 0.99, "visualEvidenceReasoning": "..."},
-                  "employerEin": {"value": "XX-XXXXXXX", "rawSnippet": "...", "detectedBoxLabel": "Box b", "fieldConfidence": 0.99, "visualEvidenceReasoning": "..."},
-                  "employerName": {"value": "...", "rawSnippet": "...", "detectedBoxLabel": "Box c", "fieldConfidence": 0.99, "visualEvidenceReasoning": "..."},
-                  "box1Wages": {"value": 0.00, "rawSnippet": "...", "detectedBoxLabel": "Box 1", "fieldConfidence": 0.99, "visualEvidenceReasoning": "..."},
-                  "box2FederalTaxWithheld": {"value": 0.00, "rawSnippet": "...", "detectedBoxLabel": "Box 2", "fieldConfidence": 0.99, "visualEvidenceReasoning": "..."},
-                  "box3SocialSecurityWages": {"value": 0.00, "rawSnippet": "...", "detectedBoxLabel": "Box 3", "fieldConfidence": 0.99, "visualEvidenceReasoning": "..."},
-                  "box4SocialSecurityTaxWithheld": {"value": 0.00, "rawSnippet": "...", "detectedBoxLabel": "Box 4", "fieldConfidence": 0.99, "visualEvidenceReasoning": "..."},
-                  "box5MedicareWages": {"value": 0.00, "rawSnippet": "...", "detectedBoxLabel": "Box 5", "fieldConfidence": 0.99, "visualEvidenceReasoning": "..."},
-                  "box6MedicareTaxWithheld": {"value": 0.00, "rawSnippet": "...", "detectedBoxLabel": "Box 6", "fieldConfidence": 0.99, "visualEvidenceReasoning": "..."},
-                  "box16StateWages": {"value": 0.00, "rawSnippet": "...", "detectedBoxLabel": "Box 16", "fieldConfidence": 0.99, "visualEvidenceReasoning": "..."},
-                  "box17StateTaxWithheld": {"value": 0.00, "rawSnippet": "...", "detectedBoxLabel": "Box 17", "fieldConfidence": 0.99, "visualEvidenceReasoning": "..."},
-                  "overallExtractionConfidence": 0.99
+                  "employeeSsn": {"value": null, "rawSnippet": null, "detectedBoxLabel": "Box a", "fieldConfidence": 0.0, "visualEvidenceReasoning": "..."},
+                  "employerEin": {"value": null, "rawSnippet": null, "detectedBoxLabel": "Box b", "fieldConfidence": 0.0, "visualEvidenceReasoning": "..."},
+                  "employerName": {"value": null, "rawSnippet": null, "detectedBoxLabel": "Box c", "fieldConfidence": 0.0, "visualEvidenceReasoning": "..."},
+                  "box1Wages": {"value": null, "rawSnippet": null, "detectedBoxLabel": "Box 1", "fieldConfidence": 0.0, "visualEvidenceReasoning": "..."},
+                  "box2FederalTaxWithheld": {"value": null, "rawSnippet": null, "detectedBoxLabel": "Box 2", "fieldConfidence": 0.0, "visualEvidenceReasoning": "..."},
+                  "box3SocialSecurityWages": {"value": null, "rawSnippet": null, "detectedBoxLabel": "Box 3", "fieldConfidence": 0.0, "visualEvidenceReasoning": "..."},
+                  "box4SocialSecurityTaxWithheld": {"value": null, "rawSnippet": null, "detectedBoxLabel": "Box 4", "fieldConfidence": 0.0, "visualEvidenceReasoning": "..."},
+                  "box5MedicareWages": {"value": null, "rawSnippet": null, "detectedBoxLabel": "Box 5", "fieldConfidence": 0.0, "visualEvidenceReasoning": "..."},
+                  "box6MedicareTaxWithheld": {"value": null, "rawSnippet": null, "detectedBoxLabel": "Box 6", "fieldConfidence": 0.0, "visualEvidenceReasoning": "..."},
+                  "box16StateWages": {"value": null, "rawSnippet": null, "detectedBoxLabel": "Box 16", "fieldConfidence": 0.0, "visualEvidenceReasoning": "..."},
+                  "box17StateTaxWithheld": {"value": null, "rawSnippet": null, "detectedBoxLabel": "Box 17", "fieldConfidence": 0.0, "visualEvidenceReasoning": "..."},
+                  "overallExtractionConfidence": 0.0
                 }
-
-                Rules:
-                1. Every field MUST contain: value, rawSnippet, detectedBoxLabel, fieldConfidence (0.0 to 1.0), and visualEvidenceReasoning.
-                2. For monetary fields, return numeric values in 'value' and exact text in 'rawSnippet'.
-                3. Do not wrap in markdown quotes or ```json fences.
                 """;
     }
 
