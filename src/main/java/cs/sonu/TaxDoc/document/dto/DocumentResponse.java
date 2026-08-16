@@ -4,8 +4,7 @@ import cs.sonu.TaxDoc.document.entity.Document;
 import cs.sonu.TaxDoc.document.entity.DocumentStatus;
 import cs.sonu.TaxDoc.document.entity.DocumentType;
 
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 public record DocumentResponse(
@@ -13,8 +12,11 @@ public record DocumentResponse(
         String originalFilename,
         DocumentStatus status,
         DocumentType docType,
-        BigDecimal docTypeConfidence,
-        OffsetDateTime uploadedAt,
+        Double docTypeConfidence,
+        Boolean isProofVerified,
+        String classificationEvidenceJson,
+        String classificationReasoning,
+        Instant uploadedAt,
         String errorMessage) {
     public static DocumentResponse from(Document doc) {
         return new DocumentResponse(
@@ -23,6 +25,9 @@ public record DocumentResponse(
                 doc.getStatus(),
                 doc.getDocType(),
                 doc.getDocTypeConfidence(),
+                doc.getIsProofVerified(),
+                doc.getClassificationEvidenceJson(),
+                doc.getClassificationReasoning(),
                 doc.getUploadedAt(),
                 doc.getErrorMessage());
     }

@@ -1,6 +1,5 @@
 package cs.sonu.TaxDoc.document.service;
 
-import cs.sonu.TaxDoc.classification.entity.ClassificationResult;
 import cs.sonu.TaxDoc.classification.service.ClassificationService;
 import cs.sonu.TaxDoc.document.entity.Document;
 import cs.sonu.TaxDoc.document.entity.DocumentStatus;
@@ -22,7 +21,8 @@ public class DocumentService {
 
     public DocumentService(
             DocumentRepository documentRepository,
-            FileStorageService fileStorageService, ClassificationService classificationService) {
+            FileStorageService fileStorageService,
+            ClassificationService classificationService) {
 
         this.documentRepository = documentRepository;
         this.fileStorageService = fileStorageService;
@@ -30,15 +30,12 @@ public class DocumentService {
     }
 
     public Document uploadDocument(MultipartFile file) {
-
         validateFile(file);
 
         UUID documentId = UUID.randomUUID();
-
         String storagePath = fileStorageService.store(documentId, file);
 
         Document document = new Document();
-
         document.setId(documentId);
         document.setOriginalFilename(file.getOriginalFilename());
         document.setStoragePath(storagePath);
@@ -53,45 +50,26 @@ public class DocumentService {
 
     public Document getDocument(UUID id) {
         return documentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException(
-                        "Document not found: " + id));
+                .orElseThrow(() -> new RuntimeException("Document not found: " + id));
+    }
+
+    public Document classifyDocument(UUID documentId) {
+        Document document = getDocument(documentId);
+        return classificationService.classify(document);
     }
 
     private void validateFile(MultipartFile file) {
-
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "File cannot be empty");
+            throw new IllegalArgumentException("File cannot be empty");
         }
 
         String contentType = file.getContentType();
-
         if (contentType == null ||
                 (!contentType.equals("application/pdf")
                         && !contentType.equals("image/jpeg")
                         && !contentType.equals("image/png"))) {
 
-            throw new IllegalArgumentException(
-                    "Only PDF, JPEG and PNG files are supported");
+            throw new IllegalArgumentException("Only PDF, JPEG and PNG files are supported");
         }
-    }
-
-    public Document classifyDocument(UUID documentId) {
-
-        Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException(
-                        "Document not found: " + documentId));
-
-        document.setStatus(DocumentStatus.CLASSIFYING);
-
-        documentRepository.save(document);
-
-        ClassificationResult result = classificationService.classify(document);
-
-        document.setDocType(result.documentType());
-        document.setDocTypeConfidence(result.confidence());
-        document.setStatus(DocumentStatus.CLASSIFIED);
-
-        return documentRepository.save(document);
     }
 }
