@@ -2,63 +2,52 @@ package cs.sonu.TaxDoc.document.storage;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-
+import cs.sonu.TaxDoc.common.exception.StorageException;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.InputStream;
+import java.nio.file.*;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
 public class FileStorageService {
 
-    private final Path storageLocation;
+    private final Path rootStorageLocation;
 
-    public FileStorageService(
-            @Value("${app.storage.location:storage/documents}") String storageLocation) {
-
-        this.storageLocation = Paths.get(storageLocation)
-                .toAbsolutePath()
-                .normalize();
-
+    public FileStorageService(@Value("${app.storage.location:storage/documents}") String storageLocation) {
+        this.rootStorageLocation = Paths.get(storageLocation).toAbsolutePath().normalize();
         try {
-            Files.createDirectories(this.storageLocation);
+            Files.createDirectories(this.rootStorageLocation);
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "Could not create storage directory", e);
+            throw new StorageException("Could not initialize root storage location", e);
         }
     }
 
     public String store(UUID documentId, MultipartFile file) {
+        String rawFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
+
+        // Anti-Path Traversal Check
+        if (rawFilename.contains("..") || rawFilename.contains("/") || rawFilename.contains("\\")) {
+            throw new StorageException("Invalid path sequence in filename: " + rawFilename);
+        }
 
         try {
-            Path documentDirectory = storageLocation.resolve(documentId.toString());
+            Path targetDir = rootStorageLocation.resolve(documentId.toString()).normalize();
+            if (!targetDir.startsWith(rootStorageLocation)) {
+                throw new StorageException("Directory traversal attack detected");
+            }
+            Files.createDirectories(targetDir);
 
-            Files.createDirectories(documentDirectory);
-
-            String originalFilename = file.getOriginalFilename();
-
-            if (originalFilename == null || originalFilename.isBlank()) {
-                throw new IllegalArgumentException(
-                        "File must have a name");
+            Path targetPath = targetDir.resolve(rawFilename).normalize();
+            try (InputStream inputStream = file.getInputStream()) {
+                Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
             }
 
-            String safeFilename = Paths.get(originalFilename)
-                    .getFileName()
-                    .toString();
-
-            Path targetPath = documentDirectory.resolve(safeFilename);
-
-            Files.copy(
-                    file.getInputStream(),
-                    targetPath);
-
             return targetPath.toString();
-
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "Could not store file", e);
+            throw new StorageException("Failed to store file for document " + documentId, e);
         }
     }
 }
