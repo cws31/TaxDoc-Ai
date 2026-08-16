@@ -4,11 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.Client;
 import com.google.genai.types.*;
 import cs.sonu.TaxDoc.classification.dto.AiClassificationResponse;
-import cs.sonu.TaxDoc.classification.entity.ClassificationResult;
+import cs.sonu.TaxDoc.classification.dto.ClassificationResult;
+import cs.sonu.TaxDoc.common.exception.AiProcessingException;
 import cs.sonu.TaxDoc.extraction.dto.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import cs.sonu.TaxDoc.common.exception.AiProcessingException;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,24 +33,34 @@ public class GeminiAiClient implements AiClient {
         public ClassificationResult classify(Path documentPath) {
                 try {
                         byte[] docBytes = Files.readAllBytes(documentPath);
+                        String mimeType = probeMimeType(documentPath);
 
                         String prompt = """
-                                        You are an enterprise tax document classifier.
-                                        Classify this document into strictly one of: W2, UNKNOWN.
-                                        Rules:
-                                        1. Return W2 only if clearly a US W-2 form.
-                                        2. Return UNKNOWN if uncertain or unsupported.
-                                        3. Confidence must be between 0.0 and 1.0.
-                                        Return ONLY standard JSON matching this structure:
+                                        You are an enterprise document auditor. Analyze the visual and textual layout of this document.
+
+                                        Classify this document as "W2" or "UNKNOWN".
+
+                                        To classify as "W2", you MUST locate and extract exact visual evidence from the document:
+                                        1. Form header markers (e.g., "Form W-2", "Wage and Tax Statement", "Department of the Treasury").
+                                        2. Standard box labels (e.g., "Box 1", "Wages, tips, other compensation", "Social security wages").
+                                        3. Official government identifiers (e.g., "OMB No. 1545-0008").
+
+                                        Return standard JSON strictly matching this schema:
                                         {
                                           "documentType": "W2",
-                                          "confidence": 0.95
+                                          "rawConfidence": 0.98,
+                                          "detectedFormHeaders": ["Form W-2", "Wage and Tax Statement"],
+                                          "detectedKeyBoxes": ["Box 1 Wages, tips, other compensation", "Box 2 Federal income tax withheld"],
+                                          "holdsOidSignature": true,
+                                          "classificationReasoning": "Found official IRS OMB No. 1545-0008, standard Form W-2 title, and numbered boxes 1-20."
                                         }
+
+                                        If these key evidence items are missing or unreadable, set documentType to "UNKNOWN".
                                         """;
 
                         Content content = Content.fromParts(
                                         Part.fromText(prompt),
-                                        Part.fromBytes(docBytes, "application/pdf"));
+                                        Part.fromBytes(docBytes, mimeType));
 
                         GenerateContentConfig config = GenerateContentConfig.builder()
                                         .temperature(0.0f)
@@ -62,16 +73,25 @@ public class GeminiAiClient implements AiClient {
                                         response.text(),
                                         AiClassificationResponse.class);
 
-                        return new ClassificationResult(parsed.documentType(), parsed.confidence());
+                        // Construct full 6-parameter ClassificationResult DTO with evidence payload
+                        return new ClassificationResult(
+                                        parsed.documentType() != null ? parsed.documentType() : "UNKNOWN",
+                                        parsed.rawConfidence(),
+                                        parsed.detectedFormHeaders(),
+                                        parsed.detectedKeyBoxes(),
+                                        parsed.holdsOmbSignature(), // Fixed method call
+                                        parsed.classificationReasoning());
 
                 } catch (IOException e) {
                         throw new AiProcessingException("AI classification failure for file: " + documentPath, e);
                 }
         }
 
+        @Override
         public W2ExtractionResult extractW2(Path filePath) {
                 try {
                         byte[] pdfBytes = Files.readAllBytes(filePath);
+                        String mimeType = probeMimeType(filePath);
 
                         String prompt = """
                                         You are an expert tax extraction system.
@@ -92,7 +112,7 @@ public class GeminiAiClient implements AiClient {
 
                         Content content = Content.fromParts(
                                         Part.fromText(prompt),
-                                        Part.fromBytes(pdfBytes, "application/pdf"));
+                                        Part.fromBytes(pdfBytes, mimeType));
 
                         GenerateContentConfig config = GenerateContentConfig.builder()
                                         .temperature(0.0f)
@@ -114,11 +134,29 @@ public class GeminiAiClient implements AiClient {
 
         private W2ExtractionResult mapToW2ExtractionResult(AiW2ExtractionResponse raw) {
                 return new W2ExtractionResult(
-                                new ExtractedValue<>(raw.employerName().value(), raw.employerName().confidence()),
-                                new ExtractedValue<>(raw.employerEin().value(), raw.employerEin().confidence()),
-                                new ExtractedValue<>(raw.employeeSsn().value(), raw.employeeSsn().confidence()),
-                                new ExtractedValue<>(raw.box1Wages().value(), raw.box1Wages().confidence()),
-                                new ExtractedValue<>(raw.box2FederalTaxWithheld().value(),
-                                                raw.box2FederalTaxWithheld().confidence()));
+                                new ExtractedValue<>(raw.employerName() != null ? raw.employerName().value() : null,
+                                                raw.employerName() != null ? raw.employerName().confidence() : 0.0),
+                                new ExtractedValue<>(raw.employerEin() != null ? raw.employerEin().value() : null,
+                                                raw.employerEin() != null ? raw.employerEin().confidence() : 0.0),
+                                new ExtractedValue<>(raw.employeeSsn() != null ? raw.employeeSsn().value() : null,
+                                                raw.employeeSsn() != null ? raw.employeeSsn().confidence() : 0.0),
+                                new ExtractedValue<>(raw.box1Wages() != null ? raw.box1Wages().value() : null,
+                                                raw.box1Wages() != null ? raw.box1Wages().confidence() : 0.0),
+                                new ExtractedValue<>(
+                                                raw.box2FederalTaxWithheld() != null
+                                                                ? raw.box2FederalTaxWithheld().value()
+                                                                : null,
+                                                raw.box2FederalTaxWithheld() != null
+                                                                ? raw.box2FederalTaxWithheld().confidence()
+                                                                : 0.0));
+        }
+
+        private String probeMimeType(Path path) {
+                try {
+                        String contentType = Files.probeContentType(path);
+                        return contentType != null ? contentType : "application/pdf";
+                } catch (IOException e) {
+                        return "application/pdf";
+                }
         }
 }
