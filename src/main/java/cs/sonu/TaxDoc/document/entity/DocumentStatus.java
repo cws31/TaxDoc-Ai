@@ -9,5 +9,8 @@ public enum DocumentStatus {
     IN_REVIEW,
     FINALIZED,
     ERROR,
-    EXTRACTED
+    EXTRACTED,
+    MANUAL_REVIEWED,
+    REJECTED,
+    PENDING_REVIEW
 }

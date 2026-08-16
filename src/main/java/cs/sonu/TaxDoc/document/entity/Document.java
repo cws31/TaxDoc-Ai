@@ -25,6 +25,7 @@ public class Document {
     private String storagePath;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 50, nullable = false)
     private DocumentStatus status;
 
     @Enumerated(EnumType.STRING)

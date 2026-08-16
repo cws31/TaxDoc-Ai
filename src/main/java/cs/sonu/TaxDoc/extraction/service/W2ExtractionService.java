@@ -8,7 +8,6 @@ import cs.sonu.TaxDoc.document.entity.DocumentType;
 import cs.sonu.TaxDoc.document.repository.DocumentRepository;
 import cs.sonu.TaxDoc.extraction.ai.ExtractionAiClient;
 import cs.sonu.TaxDoc.extraction.dto.W2ExtractionResult;
-import cs.sonu.TaxDoc.extraction.entity.ExtractedFieldStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +60,7 @@ public class W2ExtractionService implements ExtractionService {
         ExtensibleW2ComplianceEngine.ComplianceReport complianceReport = extensibleW2ComplianceEngine
                 .evaluate(rawExtraction);
 
-        // 3. Persist evidence JSON, update confidence score, and transition status
+        // 3. Persist evidence JSON and confidence score
         try {
             document.setExtractedDataJson(objectMapper.writeValueAsString(rawExtraction));
             document.setDocTypeConfidence(complianceReport.complianceScore());
@@ -69,8 +68,18 @@ public class W2ExtractionService implements ExtractionService {
             document.setExtractedDataJson("{}");
         }
 
-        // Set document status based on scoring recommendation
-        document.setStatus(DocumentStatus.EXTRACTED);
+        // 4. Automatic Routing Logic based on Confidence Threshold (e.g., 0.95)
+        double confidenceThreshold = 0.95;
+
+        if (complianceReport.complianceScore() >= confidenceThreshold) {
+            document.setStatus(DocumentStatus.EXTRACTED); // Auto-Accepted
+            log.info("Document {} auto-accepted with confidence score: {}", document.getId(),
+                    complianceReport.complianceScore());
+        } else {
+            document.setStatus(DocumentStatus.PENDING_REVIEW); // Flagged for Human Auditor
+            log.warn("Document {} flagged for PENDING_REVIEW due to low confidence score: {}", document.getId(),
+                    complianceReport.complianceScore());
+        }
 
         documentRepository.save(document);
 
