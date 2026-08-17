@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -41,11 +41,12 @@ public class DocumentWorkflowOrchestrator {
     public List<Document> processBatchEndToEnd(MultipartFile[] files) {
         List<Document> uploadedDocuments = documentService.uploadBatch(files);
 
-        return uploadedDocuments.parallelStream()
+        return uploadedDocuments.stream()
                 .map(this::executePipeline)
                 .toList();
     }
 
+    @Transactional
     private Document executePipeline(Document document) {
         try {
             log.info("Starting pipeline execution for Document ID: {}", document.getId());
