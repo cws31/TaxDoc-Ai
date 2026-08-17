@@ -1,7 +1,5 @@
 package cs.sonu.TaxDoc.classification.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import cs.sonu.TaxDoc.classification.ai.AiClient;
 import cs.sonu.TaxDoc.classification.dto.ClassificationResult;
 import cs.sonu.TaxDoc.document.entity.Document;
@@ -25,17 +23,14 @@ public class AiClassificationService implements ClassificationService {
     private final AiClient aiClient;
     private final ClassificationVerifier classificationVerifier;
     private final DocumentRepository documentRepository;
-    private final ObjectMapper objectMapper;
 
     public AiClassificationService(
             AiClient aiClient,
             ClassificationVerifier classificationVerifier,
-            DocumentRepository documentRepository,
-            ObjectMapper objectMapper) {
+            DocumentRepository documentRepository) {
         this.aiClient = aiClient;
         this.classificationVerifier = classificationVerifier;
         this.documentRepository = documentRepository;
-        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -51,27 +46,28 @@ public class AiClassificationService implements ClassificationService {
         boolean isVerified = classificationVerifier.verifyClassificationProof(rawResult);
 
         if (isVerified) {
-            document.setDocType(DocumentType.W2);
-            document.setIsProofVerified(true);
-            document.setDocTypeConfidence(rawResult.rawConfidence());
-            document.setClassificationReasoning(rawResult.classificationReasoning());
+            String parsedType = rawResult.documentType().toUpperCase().replace("-", "").replace(" ", "_");
+            try {
+                document.setDocType(DocumentType.valueOf(parsedType));
+            } catch (IllegalArgumentException e) {
+                document.setDocType(DocumentType.UNKNOWN);
+            }
+
+            document.setStatus(DocumentStatus.CLASSIFIED);
+            return documentRepository.save(document);
+
         } else {
-            log.warn("Document ID {} failed visual proof check. Overriding to UNKNOWN.", document.getId());
+            log.warn("Document ID {} failed structural classification. Rejecting and removing from DB.",
+                    document.getId());
+
             document.setDocType(DocumentType.UNKNOWN);
-            document.setIsProofVerified(false);
-            document.setDocTypeConfidence(0.0);
-            document.setClassificationReasoning(
-                    "Failed visual proof check: Missing mandatory W-2 headers, boxes, or OMB signature.");
-        }
+            document.setStatus(DocumentStatus.REJECTED);
+            document.setErrorMessage("Rejected: Unsupported document format or unrecognized form structure.");
 
-        try {
-            document.setClassificationEvidenceJson(objectMapper.writeValueAsString(rawResult));
-        } catch (JsonProcessingException e) {
-            document.setClassificationEvidenceJson("{}");
-        }
+            documentRepository.delete(document);
 
-        document.setStatus(DocumentStatus.CLASSIFIED);
-        return documentRepository.save(document);
+            return document;
+        }
     }
 
     @Override

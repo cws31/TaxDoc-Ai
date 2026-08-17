@@ -1,35 +1,44 @@
 package cs.sonu.TaxDoc.classification.service;
 
 import cs.sonu.TaxDoc.classification.dto.ClassificationResult;
+import cs.sonu.TaxDoc.classification.verifier.DocumentVerifierStrategy;
+import cs.sonu.TaxDoc.document.entity.DocumentType;
 import org.springframework.stereotype.Component;
+
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 
 @Component
 public class ClassificationVerifier {
 
+    private final Map<DocumentType, DocumentVerifierStrategy> registry = new EnumMap<>(DocumentType.class);
+
+    public ClassificationVerifier(List<DocumentVerifierStrategy> strategies) {
+        for (DocumentVerifierStrategy strategy : strategies) {
+            registry.put(strategy.getSupportedDocumentType(), strategy);
+        }
+    }
+
     public boolean verifyClassificationProof(ClassificationResult result) {
-        if (result == null || !"W2".equalsIgnoreCase(result.documentType())) {
+        if (result == null || result.documentType() == null || result.documentType().isBlank()) {
             return false;
         }
 
-        int score = 0;
+        String normalizedType = result.documentType().toUpperCase().replace("-", "").replace(" ", "_");
 
-        boolean hasValidHeader = result.detectedFormHeaders() != null && result.detectedFormHeaders().stream()
-                .anyMatch(h -> h.toLowerCase().contains("w-2") || h.toLowerCase().contains("wage and tax"));
-
-        if (hasValidHeader) {
-            score += 40;
+        DocumentType docType;
+        try {
+            docType = DocumentType.valueOf(normalizedType);
+        } catch (IllegalArgumentException e) {
+            return false;
         }
 
-        boolean hasValidBoxes = result.detectedKeyBoxes() != null && result.detectedKeyBoxes().size() >= 2;
-
-        if (hasValidBoxes) {
-            score += 40;
+        DocumentVerifierStrategy strategy = registry.get(docType);
+        if (strategy == null) {
+            return false;
         }
 
-        if (Boolean.TRUE.equals(result.holdsOmbSignature())) {
-            score += 20;
-        }
-
-        return hasValidHeader && hasValidBoxes && (score >= 80);
+        return strategy.verify(result);
     }
 }
