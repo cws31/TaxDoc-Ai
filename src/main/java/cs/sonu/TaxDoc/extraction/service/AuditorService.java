@@ -2,6 +2,8 @@ package cs.sonu.TaxDoc.extraction.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import cs.sonu.TaxDoc.audit.entity.FieldAuditLog;
+import cs.sonu.TaxDoc.audit.repository.FieldAuditLogRepository;
 import cs.sonu.TaxDoc.document.entity.Document;
 import cs.sonu.TaxDoc.document.entity.DocumentStatus;
 import cs.sonu.TaxDoc.document.repository.DocumentRepository;
@@ -23,10 +25,14 @@ public class AuditorService {
     private static final Logger log = LoggerFactory.getLogger(AuditorService.class);
 
     private final DocumentRepository documentRepository;
+    private final FieldAuditLogRepository auditLogRepository;
     private final ObjectMapper objectMapper;
 
-    public AuditorService(DocumentRepository documentRepository, ObjectMapper objectMapper) {
+    public AuditorService(DocumentRepository documentRepository,
+            FieldAuditLogRepository auditLogRepository,
+            ObjectMapper objectMapper) {
         this.documentRepository = documentRepository;
+        this.auditLogRepository = auditLogRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -43,12 +49,10 @@ public class AuditorService {
         Document doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Document not found with ID: " + documentId));
 
-        W2ExtractionResult currentData;
-        if (doc.getExtractedDataJson() == null || doc.getExtractedDataJson().isBlank()) {
-            currentData = createEmptyW2ExtractionResult();
-        } else {
-            currentData = objectMapper.readValue(doc.getExtractedDataJson(), W2ExtractionResult.class);
-        }
+        String oldJson = doc.getExtractedDataJson();
+        W2ExtractionResult currentData = (oldJson == null || oldJson.isBlank())
+                ? createEmptyW2ExtractionResult()
+                : objectMapper.readValue(oldJson, W2ExtractionResult.class);
 
         if (request.correctedFields() != null && !request.correctedFields().isEmpty()) {
             Map<String, String> fields = request.correctedFields();
@@ -84,15 +88,23 @@ public class AuditorService {
                             ? createHumanOverrideDouble(fields.get("box17StateTaxWithheld"), "Box 17")
                             : currentData.box17StateTaxWithheld(),
                     1.0);
-
-            log.info("Applied {} human corrections for Document ID: {}", fields.size(), documentId);
         }
 
         doc.setExtractedDataJson(objectMapper.writeValueAsString(currentData));
         doc.setStatus(DocumentStatus.MANUAL_REVIEWED);
         doc.setDocTypeConfidence(1.0);
         documentRepository.save(doc);
-        log.info("Document ID {} successfully reviewed and marked as MANUAL_REVIEWED", documentId);
+
+        FieldAuditLog auditLog = new FieldAuditLog();
+        auditLog.setDocumentId(documentId);
+        auditLog.setActorType("USER");
+        auditLog.setActorId("auditor-reviewer");
+        auditLog.setActionDescription("Manual review submitted and fields corrected.");
+        auditLog.setOldValue(oldJson);
+        auditLog.setNewValue(doc.getExtractedDataJson());
+        auditLogRepository.save(auditLog);
+
+        log.info("Document ID {} manually reviewed, audit log recorded.", documentId);
     }
 
     @Transactional
@@ -103,39 +115,35 @@ public class AuditorService {
         doc.setStatus(DocumentStatus.REJECTED);
         doc.setDocTypeConfidence(0.0);
         doc.setErrorMessage(reason);
-
         documentRepository.save(doc);
-        log.warn("Document ID {} rejected. Reason: {}", documentId, reason);
+
+        FieldAuditLog auditLog = new FieldAuditLog();
+        auditLog.setDocumentId(documentId);
+        auditLog.setActorType("USER");
+        auditLog.setActorId("auditor-reviewer");
+        auditLog.setActionDescription("Document rejected. Reason: " + reason);
+        auditLog.setOldValue(doc.getStatus().name());
+        auditLog.setNewValue("REJECTED");
+        auditLogRepository.save(auditLog);
+
+        log.warn("Document ID {} rejected and logged.", documentId);
     }
 
     private W2ExtractionResult createEmptyW2ExtractionResult() {
-        return new W2ExtractionResult(
-                null, null, null, null, null, null, null, null, null, null, null, 0.0);
+        return new W2ExtractionResult(null, null, null, null, null, null, null, null, null, null, null, 0.0);
     }
 
     private ExtractedField<String> createHumanOverrideString(String value, String boxLabel) {
-        return new ExtractedField<>(
-                value,
-                value,
-                boxLabel,
-                1.0,
-                "Manually corrected and verified by human auditor.");
+        return new ExtractedField<>(value, value, boxLabel, 1.0, "Manually corrected by auditor.");
     }
 
     private ExtractedField<Double> createHumanOverrideDouble(String valueStr, String boxLabel) {
         Double parsedValue = 0.0;
-        if (valueStr != null && !valueStr.isBlank()) {
-            try {
+        try {
+            if (valueStr != null)
                 parsedValue = Double.parseDouble(valueStr);
-            } catch (NumberFormatException e) {
-                parsedValue = 0.0;
-            }
+        } catch (Exception ignored) {
         }
-        return new ExtractedField<>(
-                parsedValue,
-                valueStr,
-                boxLabel,
-                1.0,
-                "Manually corrected and verified by human auditor.");
+        return new ExtractedField<>(parsedValue, valueStr, boxLabel, 1.0, "Manually corrected by auditor.");
     }
 }
