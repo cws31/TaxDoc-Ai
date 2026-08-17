@@ -1,7 +1,7 @@
 package cs.sonu.TaxDoc.classification.service;
 
-import cs.sonu.TaxDoc.classification.ai.AiClient;
 import cs.sonu.TaxDoc.classification.dto.ClassificationResult;
+import cs.sonu.TaxDoc.classification.strategy.DocumentClassificationStrategy;
 import cs.sonu.TaxDoc.document.entity.Document;
 import cs.sonu.TaxDoc.document.entity.DocumentStatus;
 import cs.sonu.TaxDoc.document.entity.DocumentType;
@@ -13,22 +13,27 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class AiClassificationService implements ClassificationService {
 
     private static final Logger log = LoggerFactory.getLogger(AiClassificationService.class);
 
-    private final AiClient aiClient;
+    private final Map<DocumentType, DocumentClassificationStrategy> strategyMap;
     private final ClassificationVerifier classificationVerifier;
     private final DocumentRepository documentRepository;
 
     public AiClassificationService(
-            AiClient aiClient,
+            List<DocumentClassificationStrategy> strategies,
             ClassificationVerifier classificationVerifier,
             DocumentRepository documentRepository) {
-        this.aiClient = aiClient;
+        this.strategyMap = strategies.stream()
+                .collect(Collectors.toMap(DocumentClassificationStrategy::getSupportedDocumentType,
+                        Function.identity()));
         this.classificationVerifier = classificationVerifier;
         this.documentRepository = documentRepository;
     }
@@ -41,8 +46,16 @@ public class AiClassificationService implements ClassificationService {
         document.setStatus(DocumentStatus.CLASSIFYING);
         documentRepository.save(document);
 
-        ClassificationResult rawResult = aiClient.classify(documentPath);
+        // For now, default new/unclassified documents through the W2 strategy
+        // (or you can use a primary router strategy if supporting multiple unknown
+        // formats at once).
+        DocumentClassificationStrategy strategy = strategyMap.get(DocumentType.W2);
 
+        if (strategy == null) {
+            throw new IllegalStateException("No classification strategy found for DocumentType: W2");
+        }
+
+        ClassificationResult rawResult = strategy.classify(documentPath);
         boolean isVerified = classificationVerifier.verifyClassificationProof(rawResult);
 
         if (isVerified) {
@@ -78,7 +91,7 @@ public class AiClassificationService implements ClassificationService {
 
         List<Document> documents = documentRepository.findAllById(documentIds);
 
-        return documents.parallelStream()
+        return documents.stream()
                 .map(this::classify)
                 .toList();
     }
