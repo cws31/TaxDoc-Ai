@@ -3,15 +3,17 @@ package cs.sonu.TaxDoc.document.service;
 import cs.sonu.TaxDoc.classification.service.ClassificationService;
 import cs.sonu.TaxDoc.document.entity.Document;
 import cs.sonu.TaxDoc.document.entity.DocumentStatus;
-import cs.sonu.TaxDoc.document.entity.DocumentType;
 import cs.sonu.TaxDoc.document.repository.DocumentRepository;
-import cs.sonu.TaxDoc.extraction.service.ExtractionService;
+import cs.sonu.TaxDoc.document.workflow.DocumentWorkflowHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class DocumentWorkflowOrchestrator {
@@ -20,22 +22,23 @@ public class DocumentWorkflowOrchestrator {
 
     private final DocumentService documentService;
     private final ClassificationService classificationService;
-    private final ExtractionService extractionService;
     private final DocumentRepository documentRepository;
+    private final Map<cs.sonu.TaxDoc.document.entity.DocumentType, DocumentWorkflowHandler> handlerMap;
 
     public DocumentWorkflowOrchestrator(
             DocumentService documentService,
             ClassificationService classificationService,
-            ExtractionService extractionService,
-            DocumentRepository documentRepository) {
+            DocumentRepository documentRepository,
+            List<DocumentWorkflowHandler> handlers) {
         this.documentService = documentService;
         this.classificationService = classificationService;
-        this.extractionService = extractionService;
         this.documentRepository = documentRepository;
+
+        this.handlerMap = handlers.stream()
+                .collect(Collectors.toMap(DocumentWorkflowHandler::getSupportedDocumentType, Function.identity()));
     }
 
     public List<Document> processBatchEndToEnd(MultipartFile[] files) {
-
         List<Document> uploadedDocuments = documentService.uploadBatch(files);
 
         return uploadedDocuments.parallelStream()
@@ -48,21 +51,37 @@ public class DocumentWorkflowOrchestrator {
             log.info("Starting pipeline execution for Document ID: {}", document.getId());
 
             document = classificationService.classify(document);
-            log.info("Document {} classified as type: {} with confidence: {}",
-                    document.getId(), document.getDocType(), document.getDocTypeConfidence());
 
-            if (document.getDocType() == DocumentType.W2) {
-                log.info("Triggering automated W2 Extraction and Compliance Engine for ID: {}", document.getId());
-                extractionService.extractW2Data(document);
+            if (document.getStatus() == DocumentStatus.REJECTED) {
+                log.warn("Document ID {} was rejected during classification. Halting workflow.", document.getId());
+                return document;
+            }
+            DocumentWorkflowHandler handler = handlerMap.get(document.getDocType());
+            if (handler != null) {
+                handler.handle(document);
             } else {
-                log.warn("Document ID {} is not a W2. Flagging for review.", document.getId());
+                log.info("No automated handler found for type {}. Routing ID {} to manual review queue.",
+                        document.getDocType(), document.getId());
                 document.setStatus(DocumentStatus.PENDING_REVIEW);
                 documentRepository.save(document);
             }
+
+            if (document.getStatus() == DocumentStatus.REJECTED) {
+                log.warn("Document ID {} failed extraction safety thresholds and was deleted from DB.",
+                        document.getId());
+                return document;
+            }
+
         } catch (Exception e) {
-            log.error("Pipeline failure for Document ID {}: {}", document.getId(), e.getMessage());
+            log.error("Pipeline orchestration failure for Document ID {}: {}", document.getId(), e.getMessage());
             document.setStatus(DocumentStatus.REJECTED);
-            documentRepository.save(document);
+            document.setErrorMessage("Pipeline orchestration error: " + e.getMessage());
+
+            try {
+                documentRepository.save(document);
+            } catch (Exception ex) {
+            }
+            return document;
         }
 
         return documentService.getDocument(document.getId());
