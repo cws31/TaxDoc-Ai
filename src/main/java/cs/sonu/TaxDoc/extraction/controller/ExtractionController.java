@@ -2,7 +2,6 @@ package cs.sonu.TaxDoc.extraction.controller;
 
 import cs.sonu.TaxDoc.document.entity.Document;
 import cs.sonu.TaxDoc.document.service.DocumentService;
-import cs.sonu.TaxDoc.extraction.dto.W2ExtractionResult;
 import cs.sonu.TaxDoc.extraction.service.ExtractionService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,16 +21,16 @@ public class ExtractionController {
         this.documentService = documentService;
     }
 
-    @PostMapping("/w2/{documentId}")
-    public ResponseEntity<W2ExtractionResult> extractSingleW2(@PathVariable UUID documentId) {
+    @PostMapping("/{documentId}")
+    public ResponseEntity<Object> extractSingleDocument(@PathVariable UUID documentId) {
         Document document = documentService.getDocument(documentId);
-        W2ExtractionResult result = extractionService.extractW2Data(document);
+        Object result = extractionService.extractDocument(document);
         return ResponseEntity.ok(result);
     }
 
-    @PostMapping("/w2/batch")
-    public ResponseEntity<List<W2ExtractionResult>> extractBatchW2(@RequestBody List<UUID> documentIds) {
-        List<W2ExtractionResult> results = extractionService.extractBatchW2Data(documentIds);
+    @PostMapping("/batch")
+    public ResponseEntity<List<Object>> extractBatchDocuments(@RequestBody List<UUID> documentIds) {
+        List<Object> results = extractionService.extractBatchDocuments(documentIds);
         return ResponseEntity.ok(results);
     }
 }

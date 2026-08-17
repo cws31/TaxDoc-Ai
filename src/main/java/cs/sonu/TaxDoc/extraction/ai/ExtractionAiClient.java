@@ -1,9 +1,7 @@
 package cs.sonu.TaxDoc.extraction.ai;
 
-import cs.sonu.TaxDoc.extraction.dto.W2ExtractionResult;
-
 import java.nio.file.Path;
 
 public interface ExtractionAiClient {
-    W2ExtractionResult extractW2Data(Path documentPath);
+    <T> T extractDocumentData(Path documentPath, String prompt, Class<T> responseType);
 }
