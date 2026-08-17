@@ -1,11 +1,11 @@
 package cs.sonu.TaxDoc.extraction.compliance.rules;
 
-import cs.sonu.TaxDoc.extraction.compliance.W2ComplianceRule;
+import cs.sonu.TaxDoc.extraction.compliance.TaxDocumentComplianceRule;
 import cs.sonu.TaxDoc.extraction.dto.W2ExtractionResult;
 import org.springframework.stereotype.Component;
 
 @Component
-public class SocialSecurityMathRule implements W2ComplianceRule {
+public class SocialSecurityMathRule implements TaxDocumentComplianceRule<W2ExtractionResult> {
 
     @Override
     public RuleEvaluationResult evaluate(W2ExtractionResult result) {

@@ -1,9 +1,7 @@
 package cs.sonu.TaxDoc.extraction.compliance;
 
-import cs.sonu.TaxDoc.extraction.dto.W2ExtractionResult;
-
-public interface W2ComplianceRule {
-    RuleEvaluationResult evaluate(W2ExtractionResult result);
+public interface TaxDocumentComplianceRule<T> {
+    RuleEvaluationResult evaluate(T extractionResult);
 
     record RuleEvaluationResult(
             String ruleName,

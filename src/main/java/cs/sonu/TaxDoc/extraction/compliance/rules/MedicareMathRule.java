@@ -1,11 +1,11 @@
 package cs.sonu.TaxDoc.extraction.compliance.rules;
 
-import cs.sonu.TaxDoc.extraction.compliance.W2ComplianceRule;
+import cs.sonu.TaxDoc.extraction.compliance.TaxDocumentComplianceRule;
 import cs.sonu.TaxDoc.extraction.dto.W2ExtractionResult;
 import org.springframework.stereotype.Component;
 
 @Component
-public class MedicareMathRule implements W2ComplianceRule {
+public class MedicareMathRule implements TaxDocumentComplianceRule<W2ExtractionResult> {
     @Override
     public RuleEvaluationResult evaluate(W2ExtractionResult result) {
         if (result.box5MedicareWages() != null && result.box5MedicareWages().value() != null

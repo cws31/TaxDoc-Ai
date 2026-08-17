@@ -1,11 +1,11 @@
 package cs.sonu.TaxDoc.extraction.compliance.rules;
 
-import cs.sonu.TaxDoc.extraction.compliance.W2ComplianceRule;
+import cs.sonu.TaxDoc.extraction.compliance.TaxDocumentComplianceRule;
 import cs.sonu.TaxDoc.extraction.dto.W2ExtractionResult;
 import org.springframework.stereotype.Component;
 
 @Component
-public class StateTaxValidationRule implements W2ComplianceRule {
+public class StateTaxValidationRule implements TaxDocumentComplianceRule<W2ExtractionResult> {
     @Override
     public RuleEvaluationResult evaluate(W2ExtractionResult result) {
         if (result.box16StateWages() != null && result.box16StateWages().value() != null
