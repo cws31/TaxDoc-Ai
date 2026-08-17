@@ -7,7 +7,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.2.4</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/> 
     </parent>
     
     <groupId>cs.sonu.TaxDoc</groupId>
@@ -21,7 +21,7 @@
     </properties>
 
     <dependencies>
-        <!-- Web starter automatically configures Jackson ObjectMapper -->
+        
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -38,20 +38,25 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Google GenAI SDK -->
+     
         <dependency>
             <groupId>com.google.genai</groupId>
             <artifactId>google-genai</artifactId>
             <version>1.0.0</version>
         </dependency>
 
-        <!-- PDF Processing -->
+       
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
             <version>3.0.5</version>
         </dependency>
 
+       <dependency>
+    <groupId>org.springdoc</groupId>
+    <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+    <version>2.5.0</version>
+</dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -64,13 +69,13 @@
             <scope>runtime</scope>
             <optional>true</optional>
         </dependency>
-		<!-- Spring Retry Library -->
+		
 <dependency>
     <groupId>org.springframework.retry</groupId>
     <artifactId>spring-retry</artifactId>
 </dependency>
 
-<!-- Spring AOP (Required because Spring Retry uses AOP proxies) -->
+
 <dependency>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-aop</artifactId>
