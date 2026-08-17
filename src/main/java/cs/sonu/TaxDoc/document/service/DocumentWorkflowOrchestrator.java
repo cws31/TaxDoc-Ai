@@ -7,11 +7,14 @@ import cs.sonu.TaxDoc.document.repository.DocumentRepository;
 import cs.sonu.TaxDoc.document.workflow.DocumentWorkflowHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -38,12 +41,17 @@ public class DocumentWorkflowOrchestrator {
                 .collect(Collectors.toMap(DocumentWorkflowHandler::getSupportedDocumentType, Function.identity()));
     }
 
-    public List<Document> processBatchEndToEnd(MultipartFile[] files) {
+    @Async("documentTaskExecutor")
+    public CompletableFuture<List<Document>> processBatchEndToEnd(MultipartFile[] files) {
+        log.info("Starting asynchronous batch processing for {} uploaded file(s).", files != null ? files.length : 0);
+
         List<Document> uploadedDocuments = documentService.uploadBatch(files);
 
-        return uploadedDocuments.stream()
+        List<Document> processedDocuments = uploadedDocuments.stream()
                 .map(this::executePipeline)
                 .toList();
+
+        return CompletableFuture.completedFuture(processedDocuments);
     }
 
     @Transactional
@@ -57,6 +65,7 @@ public class DocumentWorkflowOrchestrator {
                 log.warn("Document ID {} was rejected during classification. Halting workflow.", document.getId());
                 return document;
             }
+
             DocumentWorkflowHandler handler = handlerMap.get(document.getDocType());
             if (handler != null) {
                 handler.handle(document);
@@ -81,6 +90,7 @@ public class DocumentWorkflowOrchestrator {
             try {
                 documentRepository.save(document);
             } catch (Exception ex) {
+
             }
             return document;
         }

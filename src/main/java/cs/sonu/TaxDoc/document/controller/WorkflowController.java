@@ -19,12 +19,13 @@ public class WorkflowController {
     }
 
     @PostMapping("/process")
-    public ResponseEntity<List<Document>> processDocuments(@RequestParam("files") MultipartFile[] files) {
+    public ResponseEntity<String> processDocuments(@RequestParam("files") MultipartFile[] files) {
         if (files == null || files.length == 0) {
             throw new IllegalArgumentException("At least one file must be uploaded.");
         }
 
-        List<Document> processedDocuments = workflowOrchestrator.processBatchEndToEnd(files);
-        return ResponseEntity.ok(processedDocuments);
+        workflowOrchestrator.processBatchEndToEnd(files);
+
+        return ResponseEntity.accepted().body("Batch upload accepted and is being processed in the background.");
     }
 }
