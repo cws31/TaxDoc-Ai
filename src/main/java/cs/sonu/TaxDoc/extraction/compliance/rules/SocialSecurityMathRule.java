@@ -15,9 +15,9 @@ public class SocialSecurityMathRule implements W2ComplianceRule {
 
             double wages = result.box3SocialSecurityWages().value();
             double tax = result.box4SocialSecurityTaxWithheld().value();
-            double expectedTax = wages * 0.062; // Standard 6.2% FICA rate
+            double expectedTax = wages * 0.062;
 
-            if (Math.abs(tax - expectedTax) > 5.00) { // $5 tolerance for rounding
+            if (Math.abs(tax - expectedTax) > 5.00) {
                 return new RuleEvaluationResult(
                         "Social Security Tax Math Rule (Boxes 3 & 4)",
                         false,

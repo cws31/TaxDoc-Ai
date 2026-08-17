@@ -40,7 +40,6 @@ public class ExtractedField {
     @Column(name = "reviewed_at")
     private OffsetDateTime reviewedAt;
 
-    // Getters and Setters
     public UUID getId() {
         return id;
     }

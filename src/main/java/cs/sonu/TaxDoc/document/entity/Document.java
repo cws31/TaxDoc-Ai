@@ -36,14 +36,13 @@ public class Document {
     @Column(columnDefinition = "TEXT")
     private String extractedDataJson;
 
-    // --- Grounded Proof & Evidence Fields ---
     @Column(columnDefinition = "TEXT")
-    private String classificationEvidenceJson; // Serialized list/JSON of detected headers, boxes, OMB signatures
+    private String classificationEvidenceJson;
 
     @Column(columnDefinition = "TEXT")
-    private String classificationReasoning; // Explicit explanation from vision model
+    private String classificationReasoning;
 
-    private Boolean isProofVerified; // Flag indicating if deterministic verification passed
+    private Boolean isProofVerified;
 
     private Instant uploadedAt;
     private String errorMessage;

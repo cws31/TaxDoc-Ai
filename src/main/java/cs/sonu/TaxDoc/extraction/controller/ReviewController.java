@@ -19,18 +19,12 @@ public class ReviewController {
         this.auditorService = auditorService;
     }
 
-    /**
-     * Get ALL documents in the system with full information.
-     */
     @GetMapping("/documents")
     public ResponseEntity<List<Document>> getAllDocuments() {
         List<Document> documents = auditorService.getAllDocuments();
         return ResponseEntity.ok(documents);
     }
 
-    /**
-     * Get ONLY documents that are currently flagged for human review.
-     */
     @GetMapping("/pending")
     public ResponseEntity<List<Document>> getPendingReviewDocuments() {
         List<Document> pendingDocs = auditorService.getPendingReviewDocuments();

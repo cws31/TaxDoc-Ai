@@ -46,13 +46,10 @@ public class AiClassificationService implements ClassificationService {
         document.setStatus(DocumentStatus.CLASSIFYING);
         documentRepository.save(document);
 
-        // 1. Call Gemini for raw evidence
         ClassificationResult rawResult = aiClient.classify(documentPath);
 
-        // 2. Run deterministic proof check
         boolean isVerified = classificationVerifier.verifyClassificationProof(rawResult);
 
-        // 3. Update entity fields directly
         if (isVerified) {
             document.setDocType(DocumentType.W2);
             document.setIsProofVerified(true);
@@ -85,7 +82,6 @@ public class AiClassificationService implements ClassificationService {
 
         List<Document> documents = documentRepository.findAllById(documentIds);
 
-        // Concurrency execution isolated inside Classification module
         return documents.parallelStream()
                 .map(this::classify)
                 .toList();

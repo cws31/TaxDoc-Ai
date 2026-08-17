@@ -30,7 +30,6 @@ public class DocumentService {
         this.classificationService = classificationService;
     }
 
-    // --- Single Upload ---
     public Document uploadDocument(MultipartFile file) {
         validateFile(file);
 
@@ -46,7 +45,6 @@ public class DocumentService {
         return documentRepository.save(document);
     }
 
-    // --- Batch Upload ---
     public List<Document> uploadBatch(MultipartFile[] files) {
         if (files == null || files.length == 0) {
             throw new IllegalArgumentException("Batch upload request cannot be empty");
@@ -72,7 +70,6 @@ public class DocumentService {
         return documentRepository.saveAll(documents);
     }
 
-    // --- Entity Querying ---
     public List<Document> getAllDocuments() {
         return documentRepository.findAll();
     }
@@ -82,7 +79,6 @@ public class DocumentService {
                 .orElseThrow(() -> new RuntimeException("Document not found: " + id));
     }
 
-    // --- Classification Delegations ---
     public Document classifyDocument(UUID documentId) {
         Document document = getDocument(documentId);
         return classificationService.classify(document);
@@ -92,7 +88,6 @@ public class DocumentService {
         return classificationService.classifyBatch(documentIds);
     }
 
-    // --- Validation Helper ---
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File cannot be empty");

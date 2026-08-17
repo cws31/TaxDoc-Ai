@@ -52,15 +52,11 @@ public class W2ExtractionService implements ExtractionService {
 
         Path documentPath = Path.of(document.getStoragePath());
 
-        // 1. Extract raw structured fields via Gemini AI (Pure optical parser)
         W2ExtractionResult rawExtraction = extractionAiClient.extractW2Data(documentPath);
 
-        // 2. Evaluate modular compliance and confidence via Extensible Compliance
-        // Engine
         ExtensibleW2ComplianceEngine.ComplianceReport complianceReport = extensibleW2ComplianceEngine
                 .evaluate(rawExtraction);
 
-        // 3. Persist evidence JSON and confidence score
         try {
             document.setExtractedDataJson(objectMapper.writeValueAsString(rawExtraction));
             document.setDocTypeConfidence(complianceReport.complianceScore());
@@ -68,15 +64,14 @@ public class W2ExtractionService implements ExtractionService {
             document.setExtractedDataJson("{}");
         }
 
-        // 4. Automatic Routing Logic based on Confidence Threshold (e.g., 0.95)
         double confidenceThreshold = 0.95;
 
         if (complianceReport.complianceScore() >= confidenceThreshold) {
-            document.setStatus(DocumentStatus.EXTRACTED); // Auto-Accepted
+            document.setStatus(DocumentStatus.EXTRACTED);
             log.info("Document {} auto-accepted with confidence score: {}", document.getId(),
                     complianceReport.complianceScore());
         } else {
-            document.setStatus(DocumentStatus.PENDING_REVIEW); // Flagged for Human Auditor
+            document.setStatus(DocumentStatus.PENDING_REVIEW);
             log.warn("Document {} flagged for PENDING_REVIEW due to low confidence score: {}", document.getId(),
                     complianceReport.complianceScore());
         }

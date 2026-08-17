@@ -12,9 +12,6 @@ public class AdvancedFieldValidator {
     private static final Pattern EIN_PATTERN = Pattern.compile("^\\d{2}-\\d{7}$");
     private static final Pattern MONETARY_PATTERN = Pattern.compile("^\\d+(\\.\\d{2})$");
 
-    /**
-     * Grades an individual textual/identifier field with micro-parameter checks.
-     */
     public FieldScore evaluateTextField(ExtractedField<String> field, Pattern strictPattern) {
         if (field == null || field.value() == null || field.value().isBlank()) {
             return new FieldScore(0.0, "Field is missing or null.");
@@ -24,14 +21,11 @@ public class AdvancedFieldValidator {
         if (strictPattern.matcher(val).matches()) {
             return new FieldScore(1.0, "Perfect match against strict formatting pattern.");
         } else {
-            // Partial credit if text is present but format slightly deviates
+
             return new FieldScore(0.5, "Field present but failed strict pattern validation.");
         }
     }
 
-    /**
-     * Grades a monetary field based on presence and clean decimal structuring.
-     */
     public FieldScore evaluateMonetaryField(ExtractedField<Double> field) {
         if (field == null || field.value() == null) {
             return new FieldScore(0.0, "Monetary field is missing.");
@@ -42,7 +36,6 @@ public class AdvancedFieldValidator {
             return new FieldScore(0.0, "Monetary value cannot be negative.");
         }
 
-        // Check if raw snippet matches two decimal places if available
         if (field.rawSnippet() != null && !field.rawSnippet().isBlank()) {
             String cleanSnippet = field.rawSnippet().replace(",", "").replace("$", "").trim();
             if (MONETARY_PATTERN.matcher(cleanSnippet).matches()) {
@@ -50,7 +43,6 @@ public class AdvancedFieldValidator {
             }
         }
 
-        // Valid numeric value, but snippet format was unverified
         return new FieldScore(0.9, "Valid numeric value present.");
     }
 

@@ -15,7 +15,6 @@ public class ExtensibleW2ComplianceEngine {
     private static final Logger log = LoggerFactory.getLogger(ExtensibleW2ComplianceEngine.class);
     private static final double AUTO_APPROVAL_THRESHOLD = 0.95;
 
-    // Spring automatically discovers and injects all validation rule plugins
     private final List<W2ComplianceRule> complianceRules;
 
     public ExtensibleW2ComplianceEngine(List<W2ComplianceRule> complianceRules) {
@@ -40,7 +39,6 @@ public class ExtensibleW2ComplianceEngine {
             }
         }
 
-        // Clamp score between 0.0 and 1.0
         finalScore = Math.max(0.0, Math.min(1.0, finalScore));
 
         ExtractedFieldStatus status = finalScore >= AUTO_APPROVAL_THRESHOLD

@@ -34,34 +34,23 @@ public class DocumentWorkflowOrchestrator {
         this.documentRepository = documentRepository;
     }
 
-    /**
-     * Dynamically processes incoming files (works seamlessly for 1 file or N
-     * files).
-     */
     public List<Document> processBatchEndToEnd(MultipartFile[] files) {
-        // 1. Upload all files (handles single or multiple dynamically)
+
         List<Document> uploadedDocuments = documentService.uploadBatch(files);
 
-        // 2. Run the complete pipeline concurrently for all uploaded documents
         return uploadedDocuments.parallelStream()
                 .map(this::executePipeline)
                 .toList();
     }
 
-    /**
-     * Core pipeline logic: Upload -> Classify -> Extract -> Score -> Auto-Accept /
-     * Review
-     */
     private Document executePipeline(Document document) {
         try {
             log.info("Starting pipeline execution for Document ID: {}", document.getId());
 
-            // Step 1: Classify Document
             document = classificationService.classify(document);
             log.info("Document {} classified as type: {} with confidence: {}",
                     document.getId(), document.getDocType(), document.getDocTypeConfidence());
 
-            // Step 2: Conditional Extraction & Compliance Routing
             if (document.getDocType() == DocumentType.W2) {
                 log.info("Triggering automated W2 Extraction and Compliance Engine for ID: {}", document.getId());
                 extractionService.extractW2Data(document);

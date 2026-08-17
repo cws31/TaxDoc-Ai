@@ -42,7 +42,6 @@ public class GeminiExtractionAiClient implements ExtractionAiClient {
             byte[] fileBytes = Files.readAllBytes(documentPath);
             String mimeType = determineMimeType(documentPath);
 
-            // CORRECTED CODE:
             Content content = Content.fromParts(
                     Part.fromBytes(fileBytes, mimeType),
                     Part.fromText(getExtractionPrompt()));

@@ -13,7 +13,7 @@ public class MedicareMathRule implements W2ComplianceRule {
 
             double wages = result.box5MedicareWages().value();
             double tax = result.box6MedicareTaxWithheld().value();
-            double expectedTax = wages * 0.0145; // Standard 1.45% Medicare rate
+            double expectedTax = wages * 0.0145;
 
             if (Math.abs(tax - expectedTax) > 5.00) {
                 return new RuleEvaluationResult("Medicare Tax Math Rule (Boxes 5 & 6)", false, 0.15,

@@ -28,7 +28,6 @@ public class FileStorageService {
     public String store(UUID documentId, MultipartFile file) {
         String rawFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
 
-        // Anti-Path Traversal Check
         if (rawFilename.contains("..") || rawFilename.contains("/") || rawFilename.contains("\\")) {
             throw new StorageException("Invalid path sequence in filename: " + rawFilename);
         }
